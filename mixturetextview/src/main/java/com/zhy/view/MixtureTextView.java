@@ -1,14 +1,17 @@
 package com.zhy.view;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Canvas;
-import android.graphics.Paint;
+import android.graphics.Color;
 import android.graphics.Rect;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.RelativeLayout;
 
@@ -17,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by zhy on 15/8/20.
@@ -24,30 +28,98 @@ import java.util.List;
 public class MixtureTextView extends RelativeLayout
 {
 
-    String text = "8月12日，天津港的惊天巨响hello world how are you ，炸碎了很多人的hello world how are you心，人们在感动于救人的同时，禁不住愤怒地责问，为什么一次次重特大hello world how are you事故中生命的代价换不来应有的平hello world how are you安?下个血淋淋的场面将会在哪里出现?是的，我们已经有点伤不起了，因为世间没有什么比生命更宝贵。为了生命的美好，在生产中投入多大的hello world how are you安全成本都不算昂贵。更何况2013年6月，针对全国多个地区接连发生多起重特大安全生产事故，习近平总书记就已强调：“重特大安全生产事故，造成重大人员伤亡和财产损失，必须引起hello world how are you高度重视。人命关天，发展决不能以牺牲人的生命为代价。这必须作为一条不可逾越的红线。”时隔不久，为什么又一次以决堤式的hello world how are you程度来冲毁这条红线，谁该hello world how are you为之买单?";
-
     private Layout layout = null;
+
+    /**
+     * 行高
+     */
+    private int mLineHeight;
+
+    private int mTextColor = Color.BLACK;
+    private int mTextSize = sp2px(14);
+    private String mText;
+
+    private int mLineSpace;
+
+    private TextPaint mTextPaint;
+
+    private List<List<Rect>> mDestRects = new ArrayList<List<Rect>>();
+    private List<Integer> mCorYs = null;
+    private HashSet<Integer> mCorYHashes = new HashSet<Integer>();
+
+    private int mMaxHeight;
+    private int mHeightMeasureSpec;
+    private int mOriginHeightMeasureMode;
+    private int mHeightReMeasureSpec;
+    private boolean mNeedReMeasure;
+    private boolean mNeedRenderText;
+
+    private static int[] ATTRS = new int[]{
+            android.R.attr.textSize,//16842901
+            android.R.attr.textColor,//16842904
+            android.R.attr.text//16843087
+    };
+
+    private static final int INDEX_ATTR_TEXT_SIZE = 0;
+    private static final int INDEX_ATTR_TEXT_COLOR = 1;
+    private static final int INDEX_ATTR_TEXT = 2;
+
 
     public MixtureTextView(Context context, AttributeSet attrs)
     {
         super(context, attrs);
+
+        readAttrs(context, attrs);
+
+        //just for text
+        if (mText == null)
+        {
+            mText = getResources().getString(R.string.text1);
+        }
+
+        //get text
+        if (!TextUtils.isEmpty(mText))
+        {
+            mNeedRenderText = true;
+        }
+
+        if (!mNeedRenderText) return;
+
         setWillNotDraw(false);
+
+        mTextPaint = new TextPaint();
+        mTextPaint.setDither(true);
+        mTextPaint.setAntiAlias(true);
+        mTextPaint.setColor(mTextColor);
+
+
     }
 
-    private List<List<Rect>> mDestRects = new ArrayList<List<Rect>>();
-    private List<Integer> mYs = new ArrayList<Integer>();
+    private void readAttrs(Context context, AttributeSet attrs)
+    {
+        TypedArray ta = context.obtainStyledAttributes(attrs, ATTRS);
+        mTextSize = ta.getDimensionPixelSize(INDEX_ATTR_TEXT_SIZE, mTextSize);
+        mTextColor = ta.getColor(INDEX_ATTR_TEXT_COLOR, mTextColor);
+        mText = ta.getString(INDEX_ATTR_TEXT);
+        ta.recycle();
+
+    }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
     {
-        TextPaint paint = new TextPaint();
-        paint.setTextSize(30);
-        layout = new StaticLayout("中", paint, 100, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0f, false);
-        int lineHeight = layout.getLineDescent(0) - layout.getLineAscent(0);
-        lineHeight = layout.getLineBottom(0) - layout.getLineTop(0);
 
-        Log.e("TAG", "lineHeight = " + lineHeight);
+        if (!mNeedRenderText)
+        {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            return;
+        }
 
+        mHeightMeasureSpec = heightMeasureSpec;
+        mTextPaint.setTextSize(mTextSize);
+        cacuLineHeight();
+
+        int lineHeight = mLineHeight;
         int childCount = getChildCount();
         for (int i = 0; i < childCount; i++)
         {
@@ -56,19 +128,29 @@ public class MixtureTextView extends RelativeLayout
 
             int height = v.getMeasuredHeight();
 
-            height = resetValueBaseLineHeight(lineHeight, height);
-
             MarginLayoutParams lp = (MarginLayoutParams) v.getLayoutParams();
-            lp.height = height;
+            lp.height = resetValueBaseLineHeight(lineHeight, height);
+            lp.width = (int) (v.getMeasuredWidth() * (lp.height * 1.0f / height));
             lp.leftMargin = resetValueBaseLineHeight(lineHeight, lp.leftMargin);
             lp.rightMargin = resetValueBaseLineHeight(lineHeight, lp.rightMargin);
             lp.bottomMargin = resetValueBaseLineHeight(lineHeight, lp.bottomMargin);
             lp.topMargin = resetValueBaseLineHeight(lineHeight, lp.topMargin);
         }
 
+        Log.e("TAG", "onMesure " + MeasureSpec.toString(mHeightReMeasureSpec));
+        if (mNeedReMeasure)
+        {
+            super.onMeasure(widthMeasureSpec, mHeightReMeasureSpec);
+        } else
+        {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+    }
 
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
+    private void cacuLineHeight()
+    {
+        layout = new StaticLayout("爱我中华", mTextPaint, 0, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0f, false);
+        mLineHeight = layout.getLineBottom(0) - layout.getLineTop(0);
     }
 
     private int resetValueBaseLineHeight(int lineHeight, int height)
@@ -84,146 +166,181 @@ public class MixtureTextView extends RelativeLayout
         return height;
     }
 
+    private boolean mFirstInLayout = true;
+
     @Override
-    protected void onDraw(Canvas canvas)
+    protected void onLayout(boolean changed, int l, int t, int r, int b)
     {
-        super.onDraw(canvas);
+        if (mFirstInLayout)
+        {
+            mOriginHeightMeasureMode = MeasureSpec.getMode(mHeightMeasureSpec);
+            mFirstInLayout = false;
+        }
+        Log.e("TAG", "mOriginHeightMeasureMode = " + mOriginHeightMeasureMode);
 
-        //clear datas
-        mDestRects.clear();
-        mYs.clear();
+        super.onLayout(changed, l, t, r, b);
 
-        //get all y cors
+        if (!mNeedRenderText)
+        {
+            return;
+        }
+
+        getAllYCors();
+
+
+    }
+
+
+
+    private void tryDraw(Canvas canvas)
+    {
+        boolean kidding = canvas == null;
+        int lineHeight = mLineHeight;
+        List<List<Rect>> destRects = mDestRects;
+
+        int start = 0;
+        int lineSum = 0;
+        for (int i = 0; i < destRects.size(); i++)
+        {
+            List<Rect> rs = destRects.get(i);
+            Rect r = rs.get(0);
+            int rectWidth = r.width();
+            int rectHeight = r.height();
+            layout = generateLayout(mText.substring(start), rectWidth);
+            int lineCount = rectHeight / lineHeight;
+            if (i == destRects.size() - 1)
+            {
+                lineCount = layout.getLineCount() < lineCount ? layout.getLineCount() : lineCount;
+            }
+            if (!kidding)
+            {
+                canvas.save();
+                canvas.translate(r.left, r.top);
+                canvas.clipRect(0, 0, r.width(), layout.getLineBottom(lineCount - 1) - layout.getLineTop(0));
+                layout.draw(canvas);
+                canvas.restore();
+            }
+            start += layout.getLineEnd(lineCount - 1);
+            lineSum += lineCount;
+        }
+        if (kidding)
+        {
+            mMaxHeight += lineSum * lineHeight;
+            Log.e("TAG", "getHeight = " + getHeight() + " , maxHeight = " + mMaxHeight);
+
+            if (getHeight() != mMaxHeight && mOriginHeightMeasureMode != MeasureSpec.EXACTLY)
+            {
+                mHeightReMeasureSpec = MeasureSpec.makeMeasureSpec(mMaxHeight, MeasureSpec.EXACTLY);
+                mNeedReMeasure = true;
+                Log.e("TAG", "mNeedReMeasure and mMaxHeight = " + mMaxHeight);
+                requestLayout();
+            }
+        }
+
+    }
+
+    /**
+     * 获取所有的y坐标
+     */
+    private void getAllYCors()
+    {
+        Set<Integer> corYSet = mCorYHashes;
+        corYSet.clear();
+
+        //获得所有的y轴坐标
         int cCount = getChildCount();
-        Rect rect = null;
         for (int i = 0; i < cCount; i++)
         {
             View c = getChildAt(i);
             if (c.getVisibility() == View.GONE) continue;
-            mYs.add(c.getTop());
-            mYs.add(c.getBottom());
+            corYSet.add(c.getTop());
+            corYSet.add(c.getBottom());
         }
-        mYs.add(getHeight());
+        corYSet.add(0);
+        corYSet.add(Integer.MAX_VALUE);
+        //排序
+        List<Integer> corYs = new ArrayList<Integer>(corYSet);
+        Collections.sort(corYs);
 
-        //去除相同的数字
-        HashSet<Integer> tmp = new HashSet<>(mYs);
-        mYs = new ArrayList<>(tmp);
+        mCorYs = corYs;
 
-        Collections.sort(mYs);
+    }
 
-        //add view's top y
-        int first = mYs.get(0);
-        if (first != 0)
-        {
-            Rect top = new Rect(0, 0, getWidth(), first);
-            mDestRects.add(Arrays.asList(top));
-        }
+    @Override
+    protected void onDraw(Canvas canvas)
+    {
+        mMaxHeight = 0;
+        initAllNeedRenderRect();
+        tryDraw(null);
+
+        super.onDraw(canvas);
+        tryDraw(canvas);
+    }
 
 
-        //just log
-        for (Integer r : mYs)
-        {
-            Log.e("TAG", "after y =>" + r);
-        }
+    private void initAllNeedRenderRect()
+    {
+        int lineHeight = mLineHeight;
+        List<List<Rect>> destRects = this.mDestRects;
+        List<Integer> corYs = mCorYs;
 
+        destRects.clear();
         //find rect between y1 and y2
-        List<Rect> tmps = null;
-        for (int i = 0; i < mYs.size() - 1; i++)
+        List<Rect> viewRectBetween2Y = null;
+        for (int i = 0; i < corYs.size() - 1; i++)
         {
-            int y1 = mYs.get(i);
-            int y2 = mYs.get(i + 1);
+            int y1 = corYs.get(i);
+            int y2 = corYs.get(i + 1);
 
-            Log.e("TAG", "y1 = " + y1 + " , y2 = " + y2);
-            tmps = new ArrayList<Rect>();
+            viewRectBetween2Y = new ArrayList<Rect>();
             List<Rect> rs = caculateViewYBetween(y1, y2);
-            Log.e("TAG", " get " + rs.size() + " views ");
-            if (rs.size() == 0)
+
+            Rect leftFirst = null;
+            switch (rs.size())
             {
-                tmps.add(new Rect(0, y1, getWidth(), y2));
-                for (Rect r : tmps)
-                {
-                    Log.e("TAG", r.toShortString());//l t r b
-                }
-                mDestRects.add(tmps);
-                continue;
+                case 0:
+                    viewRectBetween2Y.add(new Rect(0, y1, getWidth(), y2));
+                    break;
+                case 1:
+                    leftFirst = rs.get(0);
+                    //添加第一个Rect
+                    tryAddFirst(leftFirst, viewRectBetween2Y, y1, y2);
+                    tryAddLast(leftFirst, viewRectBetween2Y, y1, y2);
+                    break;
+                default:
+                    //add first
+                    leftFirst = rs.get(0);
+                    tryAddFirst(leftFirst, viewRectBetween2Y, y1, y2);
+                    //add mid
+                    for (int j = 0; j < rs.size() - 1; j++)
+                    {
+                        Rect ra = rs.get(j);
+                        Rect rb = rs.get(j + 1);
+                        viewRectBetween2Y.add(new Rect(ra.right, y1, rb.left, y2));
+                    }
+                    //add last
+                    Rect lastRect = rs.get(rs.size() - 1);
+                    tryAddLast(lastRect, viewRectBetween2Y, y1, y2);
+                    break;
             }
-            if (rs.size() == 1)
-            {
-                Rect leftFirst = rs.get(0);
-                if (leftFirst.left > 0)
-                {
-                    tmps.add(new Rect(0, y1, leftFirst.left, y2));
-                    if (leftFirst.right < getWidth())
-                        tmps.add(new Rect(leftFirst.right, y1, getWidth(), y2));
-                } else
-                {
-                    tmps.add(new Rect(leftFirst.right, y1, getWidth(), y2));
-                }
-                for (Rect r : tmps)
-                {
-                    Log.e("TAG", r.toShortString());//l t r b
-                }
-                mDestRects.add(tmps);
-                continue;
-            }
-
-            Rect leftFirst = rs.get(0);
-            if (leftFirst.left > 0)
-            {
-                tmps.add(new Rect(0, y1, leftFirst.left, y2));
-            }
-
-            for (int j = 0; j < rs.size() - 1; j++)
-            {
-                Rect ra = rs.get(j);
-                Rect rb = rs.get(j + 1);
-                tmps.add(new Rect(ra.right, y1, rb.left, y2));
-            }
-
-            Rect lastRect = rs.get(rs.size() - 1);
-            if (lastRect.right < getWidth())
-            {
-                tmps.add(new Rect(lastRect.right, y1, getWidth(), y2));
-            }
-
-            for (Rect r : tmps)
-            {
-                Log.e("TAG", r.toShortString());//l t r b
-            }
-
-            mDestRects.add(tmps);
-        }
-        //==finish mDestRects init
-        Log.e("TAG", " mDestRects.size = " + mDestRects.size());
-
-
-        TextPaint paint = new TextPaint();
-        paint.setTextSize(30);
-        layout = new StaticLayout("中", paint, 100, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0f, false);
-        int lineHeight = layout.getLineDescent(0) - layout.getLineAscent(0);
-        lineHeight = layout.getLineBottom(0) - layout.getLineTop(0);
-
-        Paint p = new Paint();
-        p.setStyle(Paint.Style.STROKE);
-        for (int i = 0; i < getHeight(); i++)
-        {
-            //canvas.drawRect(0, i * lineHeight, getWidth(), i * lineHeight + lineHeight, p);
+            destRects.add(viewRectBetween2Y);
         }
 
-
-        List<List<Rect>> bak = new ArrayList<List<Rect>>(mDestRects);
-        int inc = 0;
-        for (int i = 0; i < mDestRects.size(); i++)
+        //split
+        List<List<Rect>> bak = new ArrayList<List<Rect>>(destRects);
+        int destRectSize = destRects.size();
+        int inc = 0;//索引增量
+        for (int i = 0; i < destRectSize; i++)
         {
-            List<Rect> rs = mDestRects.get(i);
-
+            List<Rect> rs = destRects.get(i);
             if (rs.size() > 1)
             {
                 int index = inc + i;
                 bak.remove(rs);
                 inc--;
                 Rect rect1 = rs.get(0);
-                int lh = rect1.height() / lineHeight ;
+                int lh = rect1.height() / lineHeight;
+                mMaxHeight -= lh * (rs.size() - 1) * lineHeight;
                 for (int k = 0; k < lh; k++)
                 {
                     for (int j = 0; j < rs.size(); j++)
@@ -239,83 +356,87 @@ public class MixtureTextView extends RelativeLayout
 
             }
         }
-
-        Log.e("TAG", "bak.size = " + bak.size());
-
         mDestRects = bak;
-        Log.e("TAG", "mDestRects bak.size = " + bak.size());
-
-        int start = 0;
-        boolean newLine = false;
-        int top = 0;
-        int dy = 0;
-        for (int i = 0; i < mDestRects.size(); i++)
-        {
-            List<Rect> rs = mDestRects.get(i);
-            Rect r = null;
-            Log.e("TAG", " rs.size = " + rs.size());
-            if (rs.size() == 1)
-            {
-                r = rs.get(0);
-                layout =
-                        new StaticLayout(text.substring(start),
-                                paint, r.width(), Layout.Alignment.ALIGN_NORMAL, 1.0f, 0f, false);
-
-                int lineCount = r.height() % lineHeight == 0 ? r.height() / lineHeight : (r.height() / lineHeight) + 1;
-
-                //ajust lineCount
-                if (i == mDestRects.size() - 1)
-                    lineCount = layout.getLineCount() < lineCount ? layout.getLineCount() : lineCount;
-
-                //int end = layout.getLineBottom(lineCount - 1) - layout.getLineTop(0) + dy ;
-
-                //boolean isLineCountDel = justifyLineCountDel(end, r);
-                //if (isLineCountDel)
-                {
-                    // Log.e("TAG", "isLineCountAdd");
-                    //  lineCount--;
-                }
-
-
-                Log.e("TAG", "lineCount = " + lineCount);
-                canvas.save();
-
-                if (newLine)
-                {
-                    dy += top - r.top;
-                }
-
-                canvas.translate(r.left, r.top + dy);
-                canvas.clipRect(0, 0, r.width(), layout.getLineBottom(lineCount - 1) - layout.getLineTop(0));
-                layout.draw(canvas);
-                canvas.restore();
-                start += layout.getLineEnd(lineCount - 1);
-
-                newLine = false;
-                if (i < mDestRects.size() - 1)
-                {
-                    Rect r2 = mDestRects.get(i + 1).get(0);
-                    if (r.top != r2.top)
-                    {
-                        Log.e("TAG", "newLine");
-                        newLine = true;
-                        top = layout.getLineBottom(lineCount - 1) - layout.getLineTop(0) + r.top;
-                    }
-
-                }
-            }
-        }
-
-
     }
 
+    private void tryAddLast(Rect leftFirst, List<Rect> viewRectBetween2Y, int y1, int y2)
+    {
+        if (leftFirst.right < getWidth())
+        {
+            viewRectBetween2Y.add(new Rect(leftFirst.right, y1, getWidth(), y2));
+        }
+    }
 
+    private void tryAddFirst(Rect leftFirst, List<Rect> viewRectBetween2Y, int y1, int y2)
+    {
+        if (leftFirst.left > 0)
+        {
+            viewRectBetween2Y.add(new Rect(0, y1, leftFirst.left, y2));
+        }
+    }
 
+    private StaticLayout generateLayout(String text, int width)
+    {
+        return new StaticLayout(text, mTextPaint, width, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0f, false);
+    }
+
+    public void setText(String text)
+    {
+        if (TextUtils.isEmpty(text))
+        {
+            mNeedRenderText = false;
+            requestLayout();
+            return;
+        }
+        mNeedRenderText = true;
+        mText = text;
+        setWillNotDraw(false);
+        requestLayout();
+        invalidate();
+    }
+
+    public void setTextColor(int color)
+    {
+        mTextPaint.setColor(color);
+        mTextColor = color;
+        invalidate();
+    }
+
+    public void setTextSize(int unit, int size)
+    {
+        switch (unit)
+        {
+            case TypedValue.COMPLEX_UNIT_PX:
+                mTextSize = size;
+                break;
+            case TypedValue.COMPLEX_UNIT_DIP:
+                mTextSize = dp2px(size);
+                break;
+            case TypedValue.COMPLEX_UNIT_SP:
+                mTextSize = sp2px(size);
+                break;
+        }
+        mTextPaint.setTextSize(mTextSize);
+        requestLayout();
+        invalidate();
+    }
+
+    public void setTextSize(int pxSize)
+    {
+        setTextSize(TypedValue.COMPLEX_UNIT_PX, pxSize);
+    }
+
+    /**
+     * 计算包含在y1到y2间的矩形区域
+     *
+     * @param y1
+     * @param y2
+     * @return
+     */
     private List<Rect> caculateViewYBetween(int y1, int y2)
     {
         List<Rect> rs = new ArrayList<>();
         Rect tmp = null;
-
         int childCount = getChildCount();
         for (int i = 0; i < childCount; i++)
         {
@@ -328,4 +449,33 @@ public class MixtureTextView extends RelativeLayout
         }
         return rs;
     }
+
+
+    public int sp2px(int spVal)
+    {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, spVal, getResources().getDisplayMetrics());
+    }
+
+    public int dp2px(int dpVal)
+    {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dpVal, getResources().getDisplayMetrics());
+
+    }
+
+
+    public int getTextSize()
+    {
+        return mTextSize;
+    }
+
+    public int getTextColor()
+    {
+        return mTextColor;
+    }
+
+    public String getText()
+    {
+        return mText;
+    }
+
 }

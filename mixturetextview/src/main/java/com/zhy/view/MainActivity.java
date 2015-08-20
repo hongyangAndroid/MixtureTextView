@@ -1,18 +1,25 @@
 package com.zhy.view;
 
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 
 public class MainActivity extends AppCompatActivity
 {
 
+    MixtureTextView mixtureTextView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mixtureTextView = (MixtureTextView) findViewById(R.id.id_mixtureTextview);
+        //mixtureTextView.setTextColor(0xffff6f2d);
+        //  mixtureTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        //mixtureTextView.setText(getString(R.string.text1));
     }
 
     @Override
@@ -31,6 +38,28 @@ public class MainActivity extends AppCompatActivity
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
+        switch (id)
+        {
+            case R.id.action_size_add:
+                mixtureTextView.setTextSize(mixtureTextView.getTextSize() + 2);
+                break;
+            case R.id.action_size_del:
+                mixtureTextView.setTextSize(mixtureTextView.getTextSize() - 2);
+
+                break;
+            case R.id.action_toggleText:
+                String text = mixtureTextView.getText();
+                if (text.equals(getString(R.string.text1)))
+                {
+                    mixtureTextView.setText(getString(R.string.text2));
+                } else
+                {
+                    mixtureTextView.setText(getString(R.string.text1));
+                }
+
+
+                break;
+        }
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings)
         {

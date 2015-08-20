@@ -9,14 +9,19 @@
                 tools:context="com.imooc.testandroid.mix.FlowTextViewActivity">
 
     <com.zhy.view.MixtureTextView
+        android:id="@+id/id_mixtureTextview"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:background="#f4f3ff"
+        android:text="@string/text2"
+        android:textColor="#ff5d75"
+        android:textSize="14sp">
 
         <ImageView
-            android:layout_marginTop="100dp"
-            android:layout_marginLeft="100dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="100dp"
+            android:layout_marginTop="100dp"
             android:src="@drawable/icon"/>
 
         <ImageView
@@ -29,7 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentRight="true"
-            android:src="@drawable/android2" />
+            android:src="@drawable/android2"/>
 
     </com.zhy.view.MixtureTextView>
 
