@@ -8,15 +8,13 @@
                 android:paddingTop="@dimen/activity_vertical_margin"
                 tools:context="com.imooc.testandroid.mix.FlowTextViewActivity">
 
-    <com.zhy.view.MixtureTextView
+    <RelativeLayout
         android:id="@+id/id_mixtureTextview"
         android:layout_width="match_parent"
-        android:padding="16dp"
         android:layout_height="wrap_content"
         android:background="#f4f3ff"
-        android:text="@string/text2"
-        android:textColor="#ff5d75"
-        android:textSize="14sp">
+        android:padding="20dp"
+        >
 
         <ImageView
             android:layout_width="wrap_content"
@@ -28,6 +26,7 @@
         <ImageView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:src="@drawable/icon"/>
 
 
@@ -37,6 +36,6 @@
             android:layout_alignParentRight="true"
             android:src="@drawable/android2"/>
 
-    </com.zhy.view.MixtureTextView>
+    </RelativeLayout>
 
 </RelativeLayout>
