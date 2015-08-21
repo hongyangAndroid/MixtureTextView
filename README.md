@@ -10,7 +10,7 @@
 
 ---
 
-<img src="mixture.gif" width="360px"/>
+<img src="mixture2.gif" width="360px"/>
 
 ## 使用
 
