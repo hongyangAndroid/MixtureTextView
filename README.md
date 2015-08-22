@@ -5,10 +5,19 @@
 
 ## 效果图
 
+* 一般的展示
 
 <img src="mixture.png" width="360px"/>
 
 ---
+
+* 在ListView中
+
+<img src="listview.png" width="360px"/>
+
+---
+
+* 动态图
 
 <img src="mixture2.gif" width="360px"/>
 
