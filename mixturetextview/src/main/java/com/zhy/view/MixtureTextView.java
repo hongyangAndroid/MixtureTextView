@@ -93,7 +93,6 @@ public class MixtureTextView extends RelativeLayout
 
         if (!mNeedRenderText) return;
 
-        setWillNotDraw(false);
 
         mTextPaint = new TextPaint();
         mTextPaint.setDither(true);
@@ -166,7 +165,7 @@ public class MixtureTextView extends RelativeLayout
     }
 
 
-    private void tryDraw(Canvas canvas)
+    private boolean tryDraw(Canvas canvas)
     {
         boolean kidding = canvas == null;
         int lineHeight = mLineHeight;
@@ -211,8 +210,12 @@ public class MixtureTextView extends RelativeLayout
                 mHeightReMeasureSpec = MeasureSpec.makeMeasureSpec(mMaxHeight, MeasureSpec.EXACTLY);
                 mNeedReMeasure = true;
                 requestLayout();
+
+                return true;
             }
         }
+
+        return false;
 
     }
 
@@ -251,7 +254,14 @@ public class MixtureTextView extends RelativeLayout
             mViewBounds.put(i, new Point(top, bottom));
         }
         corYSet.add(getPaddingTop());
-        corYSet.add(Integer.MAX_VALUE);
+
+        if (mOriginHeightMeasureMode == MeasureSpec.EXACTLY)
+        {
+            corYSet.add(getHeight());
+        } else
+        {
+            corYSet.add(Integer.MAX_VALUE);
+        }
         //排序
         List<Integer> corYs = new ArrayList<Integer>(corYSet);
         Collections.sort(corYs);
@@ -260,17 +270,19 @@ public class MixtureTextView extends RelativeLayout
 
     }
 
-    @Override
-    protected void onDraw(Canvas canvas)
-    {
 
+    @Override
+    protected void dispatchDraw(Canvas canvas)
+    {
         mMaxHeight = getPaddingBottom() + getPaddingRight();
         initAllNeedRenderRect();
-        tryDraw(null);
+        boolean skipDraw = tryDraw(null);
+        if (skipDraw) return;
         tryDraw(canvas);
-        super.onDraw(canvas);
-
+        super.dispatchDraw(canvas);
     }
+
+
 
 
     private void initAllNeedRenderRect()
@@ -392,7 +404,6 @@ public class MixtureTextView extends RelativeLayout
         }
         mNeedRenderText = true;
         mText = text;
-        setWillNotDraw(false);
         requestLayout();
         invalidate();
     }
