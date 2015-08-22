@@ -14,9 +14,20 @@
         android:padding="16dp"
         android:layout_height="wrap_content"
         android:background="#f4f3ff"
-        android:text="@string/text2"
+        android:text="@string/text1"
         android:textColor="#ff5d75"
         android:textSize="14sp">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:src="@drawable/icon"/>
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/android2" />
 
         <ImageView
             android:layout_width="wrap_content"
@@ -25,17 +36,10 @@
             android:layout_marginTop="100dp"
             android:src="@drawable/icon"/>
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/icon"/>
 
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:src="@drawable/android2"/>
+
+
 
     </com.zhy.view.MixtureTextView>
 

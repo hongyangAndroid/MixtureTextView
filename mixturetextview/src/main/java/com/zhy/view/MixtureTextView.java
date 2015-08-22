@@ -18,6 +18,7 @@ import android.widget.RelativeLayout;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -226,7 +227,6 @@ public class MixtureTextView extends RelativeLayout
         corYSet.clear();
         mViewBounds.clear();
 
-
         //获得所有的y轴坐标
         int cCount = getChildCount();
         for (int i = 0; i < cCount; i++)
@@ -316,7 +316,9 @@ public class MixtureTextView extends RelativeLayout
                     {
                         Rect ra = rs.get(j);
                         Rect rb = rs.get(j + 1);
-                        viewRectBetween2Y.add(new Rect(ra.right, y1, rb.left, y2));
+
+                        if (ra.right < rb.left)
+                            viewRectBetween2Y.add(new Rect(ra.right, y1, rb.left, y2));
                     }
                     //add last
                     Rect lastRect = rs.get(rs.size() - 1);
@@ -451,6 +453,45 @@ public class MixtureTextView extends RelativeLayout
                 tmp = new Rect(v.getLeft(), y1, v.getRight(), y2);
                 rs.add(tmp);
             }
+        }
+
+
+        //TODO ADD
+        Collections.sort(rs, new Comparator<Rect>()
+        {
+            @Override
+            public int compare(Rect lhs, Rect rhs)
+            {
+                if (lhs.left > rhs.left) return 1;
+                return -1;
+            }
+        });
+
+
+        if (rs.size() >= 2)
+        {
+            List<Rect> res = new ArrayList<Rect>(rs);
+            Rect pre = rs.get(0), next = rs.get(1);
+            //合并
+            for (int i = 1; i < rs.size(); i++)
+            {
+                //if相交
+                if (Rect.intersects(pre, next))
+                {
+                    int left = Math.min(pre.left, next.left);
+                    int right = Math.max(pre.right, next.right);
+
+                    res.remove(pre);
+                    res.remove(next);
+                    res.add(pre = new Rect(left, y1, right, y2));
+                } else
+                {
+                    pre = next;
+                }
+                next = rs.get(i);
+            }
+
+            rs = res;
         }
         return rs;
     }
