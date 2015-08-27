@@ -274,7 +274,7 @@ public class MixtureTextView extends RelativeLayout
     @Override
     protected void dispatchDraw(Canvas canvas)
     {
-        mMaxHeight = getPaddingBottom() + getPaddingRight();
+        mMaxHeight = getPaddingBottom() + getPaddingTop();
         initAllNeedRenderRect();
         boolean skipDraw = tryDraw(null);
         if (skipDraw) return;
