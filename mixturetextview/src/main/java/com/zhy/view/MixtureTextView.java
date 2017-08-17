@@ -494,12 +494,31 @@ public class MixtureTextView extends RelativeLayout
 
                     res.remove(pre);
                     res.remove(next);
-                    res.add(pre = new Rect(left, y1, right, y2));
-                } else
-                {
-                    pre = next;
+                    res.add(new Rect(left, y1, right, y2));
+
+                    if(res.size() >= 2)
+                    {
+                        pre = rs.get(0);
+                        next = rs.get(1);
+                    }
+                    else
+                    {
+                        break;
+                    }
+
                 }
-                next = rs.get(i);
+                else
+                {
+                    if((res.size() - i) >= 2)
+                    {
+                        pre = next;
+                        next = rs.get(i + 1);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
             }
 
             rs = res;
